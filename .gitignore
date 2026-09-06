@@ -1,0 +1,10 @@
+*
+!/.envrc
+!/.gitignore
+!/flake.lock
+!/flake.nix
+!/LICENSE
+!/jay_screenshot.py
+!/package.nix
+!/pyproject.toml
+!/README.md

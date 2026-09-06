@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jay-screenshot"
+version = "0.1.0"
+description = "grim screenshot helper for jay"
+requires-python = ">=3.11"
+dependencies = ["click"]
+
+[project.scripts]
+jay-screenshot = "jay_screenshot:main"
+
+[tool.setuptools]
+py-modules = ["jay_screenshot"]
