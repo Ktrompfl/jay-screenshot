@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
@@ -128,25 +129,29 @@ def run(
 ) -> bytes:
     if shutil.which(argv[0]) is None:
         raise ScreenshotError(f"{argv[0]} not found on PATH")
-    try:
-        process = subprocess.run(
-            argv,
-            input=stdin if stdin is not None else b"",
-            stdout=subprocess.DEVNULL if detach else subprocess.PIPE,
-            stderr=subprocess.DEVNULL if detach else subprocess.PIPE,
-            timeout=timeout,
-            check=True,
-        )
-    except subprocess.TimeoutExpired:
-        raise ScreenshotError(f"{argv[0]} timed out after {timeout:g}s") from None
-    except subprocess.CalledProcessError as error:
-        stderr = (error.stderr or b"").decode(errors="replace").strip()
-        detail = (
-            stderr.splitlines()[-1]
-            if stderr
-            else f"exited with status {error.returncode}"
-        )
-        raise ScreenshotError(f"{argv[0]}: {detail}") from None
+    with tempfile.TemporaryFile() as source:
+        if stdin is not None:
+            source.write(stdin)
+            source.seek(0)
+        try:
+            process = subprocess.run(
+                argv,
+                stdin=source,
+                stdout=subprocess.DEVNULL if detach else subprocess.PIPE,
+                stderr=subprocess.DEVNULL if detach else subprocess.PIPE,
+                timeout=timeout,
+                check=True,
+            )
+        except subprocess.TimeoutExpired:
+            raise ScreenshotError(f"{argv[0]} timed out after {timeout:g}s") from None
+        except subprocess.CalledProcessError as error:
+            stderr = (error.stderr or b"").decode(errors="replace").strip()
+            detail = (
+                stderr.splitlines()[-1]
+                if stderr
+                else f"exited with status {error.returncode}"
+            )
+            raise ScreenshotError(f"{argv[0]}: {detail}") from None
     return process.stdout or b""
 
 
