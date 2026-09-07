@@ -120,7 +120,11 @@ def notify(
 
 
 def run(
-    argv: list[str], *, stdin: bytes | None = None, timeout: float | None = None
+    argv: list[str],
+    *,
+    stdin: bytes | None = None,
+    timeout: float | None = None,
+    detach: bool = False,
 ) -> bytes:
     if shutil.which(argv[0]) is None:
         raise ScreenshotError(f"{argv[0]} not found on PATH")
@@ -128,7 +132,8 @@ def run(
         process = subprocess.run(
             argv,
             input=stdin if stdin is not None else b"",
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL if detach else subprocess.PIPE,
             timeout=timeout,
             check=True,
         )
@@ -299,7 +304,11 @@ class Capture:
         if path is not None:
             write_file(image, path)
         if self.copy:
-            run(["wl-copy", "--type", IMAGE_TYPES[self.image_type]], stdin=image)
+            run(
+                ["wl-copy", "--type", IMAGE_TYPES[self.image_type]],
+                stdin=image,
+                detach=True,
+            )
         self.announce(image, path)
 
     def announce(self, image: bytes, path: Path | None) -> None:
