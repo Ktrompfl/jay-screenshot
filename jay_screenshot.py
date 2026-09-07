@@ -132,7 +132,7 @@ def run(
         process = subprocess.run(
             argv,
             input=stdin if stdin is not None else b"",
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL if detach else subprocess.PIPE,
             stderr=subprocess.DEVNULL if detach else subprocess.PIPE,
             timeout=timeout,
             check=True,
@@ -147,7 +147,7 @@ def run(
             else f"exited with status {error.returncode}"
         )
         raise ScreenshotError(f"{argv[0]}: {detail}") from None
-    return process.stdout
+    return process.stdout or b""
 
 
 @contextmanager
