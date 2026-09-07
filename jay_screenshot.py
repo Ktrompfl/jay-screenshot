@@ -6,7 +6,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
@@ -18,7 +17,7 @@ import click
 
 QUERY_TIMEOUT = 5.0
 CAPTURE_TIMEOUT = 30.0
-NOTIFY_TIMEOUT = 60.0
+NOTIFY_TIMEOUT = 5.0
 
 REGION_PATTERN = re.compile(r"(-?\d+),(-?\d+) (\d+)x(\d+)")
 CANCELLED_PATTERN = re.compile(r"selection (cancelled|failed)", re.IGNORECASE)
@@ -98,7 +97,6 @@ def notify(
     *,
     urgent: bool = False,
     image: Path | None = None,
-    wait: bool = False,
 ) -> None:
     if not notify_enabled or shutil.which("notify-send") is None:
         return
@@ -110,14 +108,12 @@ def notify(
     ]
     if image is not None:
         argv += ["--hint", f"string:image-path:{image}"]
-    if wait:
-        argv.append("--wait")
     try:
         subprocess.run(
             argv,
             capture_output=True,
             check=False,
-            timeout=NOTIFY_TIMEOUT if wait else None,
+            timeout=NOTIFY_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
         pass
@@ -251,6 +247,18 @@ def write_file(image: bytes, path: Path) -> None:
         raise ScreenshotError(f"cannot write {path}: {error.strerror}") from None
 
 
+def preview(image: bytes, image_type: str) -> Path | None:
+    directory = os.environ.get("XDG_RUNTIME_DIR")
+    if directory is None:
+        return None
+    path = Path(directory) / f"jay-screenshot-preview.{image_type}"
+    try:
+        path.write_bytes(image)
+    except OSError:
+        return None
+    return path
+
+
 @dataclass(frozen=True)
 class Capture:
     file: str | None
@@ -302,13 +310,7 @@ class Capture:
             done.append("copied to the clipboard")
         if not done:
             return
-        if path is not None:
-            notify(" and ".join(done), image=path)
-            return
-        with tempfile.NamedTemporaryFile(suffix=f".{self.image_type}") as preview:
-            preview.write(image)
-            preview.flush()
-            notify(" and ".join(done), image=Path(preview.name), wait=True)
+        notify(" and ".join(done), image=path or preview(image, self.image_type))
 
 
 @click.group(
