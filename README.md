@@ -51,7 +51,7 @@ Alternatively, you can install it with the overlay:
 
 ## Permissions
 
-To create screenshots, `grim` needs access to the `screencopy` protocols, which is privileged on jay. For the `--copy` option, `wl-copy` needs access to the `data-control` protocols.
+To create screenshots, `grim` needs access to the `screencopy` protocols, which is privileged on jay. For the `--copy` option, `wl-copy` needs access to the `data-control` protocols. For the `--freeze` option, `wayfreeze` needs `screencopy` and `layer-shell` as well.
 You can grant access with client capabilities in your jay config:
 
 ```toml
@@ -62,6 +62,10 @@ capabilities = ["screencopy"]
 [[clients]]
 match.exe-regex = '/\.?wl-copy(-wrapped)?$'
 capabilities = ["data-control"]
+
+[[clients]]
+match.exe-regex = '/\.?wayfreeze(-wrapped)?$'
+capabilities = ["screencopy", "layer-shell"]
 ```
 
 Alternatively, you can execute the command with access to all privileged protocols using `jay run-privileged` or the `privileged` option for shortcuts:
@@ -79,6 +83,7 @@ $ jay-screenshot window --select                 # select a window to capture
 $ jay-screenshot workspace 3                     # capture a workspace by name
 $ jay-screenshot output DP-2                     # capture an output
 $ jay-screenshot region --select                 # pick a region with slurp
+$ jay-screenshot region --select --freeze        # freeze the screen while picking
 $ jay-screenshot region '0,0 1920x1080'          # capture a region by geometry
 ```
 
@@ -109,7 +114,7 @@ This allows to capture focused outputs or workspaces with no window on them:
 
 ```rust
 use jay_config::{
-    client::{CC_DATA_CONTROL, CC_SCREENCOPY, ClientCriterion},
+    client::{CC_DATA_CONTROL, CC_LAYER_SHELL, CC_SCREENCOPY, ClientCriterion},
     config,
     exec::Command,
     input::get_default_seat,
@@ -139,6 +144,9 @@ fn configure() {
     ClientCriterion::ExeRegex(r"/\.?wl-copy(-wrapped)?$")
         .to_matcher()
         .set_capabilities(CC_DATA_CONTROL);
+    ClientCriterion::ExeRegex(r"/\.?wayfreeze(-wrapped)?$")
+        .to_matcher()
+        .set_capabilities(CC_SCREENCOPY | CC_LAYER_SHELL);
 
     let seat = get_default_seat();
 
@@ -168,4 +176,4 @@ config!(configure);
 ## License
 
 The Unlicense, see [LICENSE](LICENSE).
-The tools it invokes carry their own: grim and slurp are MIT, jay is GPL-3.0, wl-clipboard is GPL-3.0-or-later and libnotify is LGPL-2.1.
+The tools it invokes carry their own: grim and slurp are MIT, jay is GPL-3.0, wl-clipboard is GPL-3.0-or-later, libnotify is LGPL-2.1 and wayfreeze is AGPL-3.0-only.

@@ -6,6 +6,7 @@
   libnotify,
   python3Packages,
   slurp,
+  wayfreeze,
   wl-clipboard,
 }:
 python3Packages.buildPythonApplication {
@@ -35,6 +36,7 @@ python3Packages.buildPythonApplication {
       jay
       libnotify
       slurp
+      wayfreeze
       wl-clipboard
     ])
   ];
@@ -55,6 +57,7 @@ python3Packages.buildPythonApplication {
       jay.meta.license
       libnotify.meta.license
       slurp.meta.license
+      wayfreeze.meta.license
       wl-clipboard.meta.license
     ];
     mainProgram = "jay-screenshot";

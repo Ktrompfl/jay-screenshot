@@ -56,6 +56,7 @@
             pkgs.grim
             pkgs.libnotify
             pkgs.slurp
+            pkgs.wayfreeze
             pkgs.wl-clipboard
             (jayFor pkgs)
           ];

@@ -165,6 +165,28 @@ def abort_if_cancelled() -> Generator[None, None, None]:
         raise
 
 
+@contextmanager
+def frozen(freeze: bool) -> Generator[None, None, None]:
+    """Hold a still image of the screen over it while something is selected."""
+    if not freeze:
+        yield
+        return
+    if shutil.which("wayfreeze") is None:
+        raise ScreenshotError("wayfreeze not found on PATH")
+    process = subprocess.Popen(
+        ["wayfreeze", "--after-freeze-cmd", "echo"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        if process.stdout is None or not process.stdout.readline():
+            raise ScreenshotError("wayfreeze did not freeze the screen")
+        yield
+    finally:
+        process.terminate()
+        process.wait()
+
+
 def query(*args: str, timeout: float | None = QUERY_TIMEOUT) -> dict[str, Any] | None:
     text = run(["jay", "--json", "tree", "query", *args], timeout=timeout).decode(
         errors="replace"
@@ -437,15 +459,21 @@ def cli(
     is_flag=True,
     help="Interactively select the window to capture.",
 )
+@click.option(
+    "--freeze",
+    is_flag=True,
+    help="Freeze the screen while selecting.",
+)
 @click.pass_obj
-def window(capture: Capture, active: bool, select: bool) -> None:
+def window(capture: Capture, active: bool, select: bool, freeze: bool) -> None:
     """Capture a window."""
     if active and select:
         raise click.UsageError("--active and --select are mutually exclusive")
     if not active and not select:
         raise click.UsageError("specify a window with --active or --select")
     if select:
-        node = selected("window")
+        with frozen(freeze):
+            node = selected("window")
     else:
         node = query("match-windows", "-e", "focused = true")
         if node is None:
@@ -471,8 +499,15 @@ def window(capture: Capture, active: bool, select: bool) -> None:
     is_flag=True,
     help=("Interactively select the workspace to capture."),
 )
+@click.option(
+    "--freeze",
+    is_flag=True,
+    help="Freeze the screen while selecting.",
+)
 @click.pass_obj
-def workspace(capture: Capture, name: str | None, active: bool, select: bool) -> None:
+def workspace(
+    capture: Capture, name: str | None, active: bool, select: bool, freeze: bool
+) -> None:
     """Capture a workspace."""
     sources = [name is not None, active, select]
     if sum(sources) > 1:
@@ -484,7 +519,8 @@ def workspace(capture: Capture, name: str | None, active: bool, select: bool) ->
         if node is None:
             raise ScreenshotError(f"there is no workspace {name}")
     elif select:
-        node = selected("workspace")
+        with frozen(freeze):
+            node = selected("workspace")
     else:
         focused = query("match-windows", "-e", "focused = true")
         if focused is None:
@@ -554,8 +590,15 @@ def output(capture: Capture, name: str | None, active: bool) -> None:
     is_flag=True,
     help="Interactively select the region to capture.",
 )
+@click.option(
+    "--freeze",
+    is_flag=True,
+    help="Freeze the screen while selecting.",
+)
 @click.pass_obj
-def region(capture: Capture, geometry: Region | None, select: bool) -> None:
+def region(
+    capture: Capture, geometry: Region | None, select: bool, freeze: bool
+) -> None:
     """Capture a region."""
     if geometry is not None and select:
         raise click.UsageError("GEOMETRY and --select are mutually exclusive")
@@ -564,7 +607,7 @@ def region(capture: Capture, geometry: Region | None, select: bool) -> None:
     if geometry is not None:
         target = geometry
     else:
-        with abort_if_cancelled():
+        with frozen(freeze), abort_if_cancelled():
             text = run(["slurp"], timeout=None).decode(errors="replace")
         try:
             target = Region.parse(text)
